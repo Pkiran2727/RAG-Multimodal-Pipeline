@@ -1,0 +1,5 @@
+The RAG Full Application Production Blueprint V3 defines the architecture for a next-generation retrieval-augmented generation pipeline.
+It incorporates advanced techniques such as Hybrid Search, which combines keyword-based BM25 and semantic pgvector search.
+Another key technique is ColBERT token-level scoring (MaxSim) which allows for deep contextual evaluations.
+The frontend uses Vite and React with a Green/Violet aesthetic theme.
+Agentic RAG utilizes a smart agent (Qwen3) that uses tools like search_docs and get_page to dynamically find answers.

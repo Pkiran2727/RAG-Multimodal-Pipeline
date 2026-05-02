@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  background-color: #0a0f0a;
+  color: #e2e8f0;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom UI Pieces */
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all shadow-glow-green;
+  }
+  .btn-accent {
+    @apply px-4 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-all shadow-glow-violet;
+  }
+  .card {
+    @apply bg-surface-800 border border-surface-700 rounded-xl p-6 transition-all;
+  }
+  .input-field {
+    @apply bg-surface-900 border border-surface-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-accent-500 outline-none;
+  }
+  .query-textarea {
+    @apply w-full bg-surface-900 border-2 border-surface-800 rounded-2xl pl-12 pr-28 py-4 text-lg focus:border-accent-500 transition-all shadow-xl outline-none resize-none overflow-hidden min-h-[60px];
+  }
+}
+
+.shadow-glow-green {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+}
+.shadow-glow-violet {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-surface-900;
+}
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-surface-700 rounded-full hover:bg-opacity-80 transition-colors;
+  }
