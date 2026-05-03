@@ -2,19 +2,30 @@ version: "3.9"
 
 services:
   backend:
-    build: 
-      context: ./backend
+    build:
+      context: ./RAG_FULL_APPLICATION_BACKEND
       dockerfile: Dockerfile
     ports:
       - "8001:8000"
     env_file:
-      - ./backend/.env
+      - ./RAG_FULL_APPLICATION_BACKEND/.env
     volumes:
-      - ./backend:/app
-      - ./backend/data:/app/data
+      - ./RAG_FULL_APPLICATION_BACKEND:/app
+      - ./RAG_FULL_APPLICATION_BACKEND/data:/app/data
     depends_on:
       - redis
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./RAG_FULL_APPLICATION_FRONTEND
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8001
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
   redis:
     image: redis:7-alpine

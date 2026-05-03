@@ -1,10 +1,10 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
 # System deps for python-docx, tiktoken, etc.
 RUN apt-get update && apt-get install -y \
-    build-essential libpq-dev && \
+    build-essential libpq-dev tesseract-ocr libmagic1 libgl1 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
