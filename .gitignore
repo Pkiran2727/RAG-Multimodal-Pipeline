@@ -1,0 +1,23 @@
+# --- Backend & Security ---
+.env
+RAG_VENV/
+__pycache__/
+*.pyc
+data/bm25_indexes/
+*.log
+
+# --- Frontend (Vite/React) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS & Editor ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
