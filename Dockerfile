@@ -28,8 +28,9 @@ COPY RAG_FULL_APPLICATION_BACKEND/ ./
 # Copy built frontend assets to the static directory
 COPY --from=frontend-builder /frontend/dist ./static
 
-# Create data directories
-RUN mkdir -p data/uploads data/bm25_indexes data/cache
+# Create data directories and set permissions for Hugging Face non-root user (UID 1000)
+RUN mkdir -p data/uploads data/bm25_indexes data/cache && \
+    chown -R 1000:1000 /app
 
 EXPOSE 7860
 
