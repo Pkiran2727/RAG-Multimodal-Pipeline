@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     VISION_SPACE_URL: str = "Qwen/Qwen3-VL-30B-A3B-Demo"
 
     # Redis
-    REDIS_URL: str
+    REDIS_URL: str = ""
     CACHE_TTL_SECONDS: int = 3600
 
     # Auth
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 50
 
     # CORS
-    CORS_ORIGINS: str
+    CORS_ORIGINS: str = ""
 
     class Config:
         env_file = ".env"

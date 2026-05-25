@@ -8,6 +8,7 @@ export const usePipelineStore = create((set) => ({
   steps: [],
   isQuerying: false,
   isIngesting: false,
+  activeJob: null,
   
   setDocuments: (documents) => set({ documents }),
   setSelectedDoc: (selectedDoc) => set({ selectedDoc }),
@@ -17,4 +18,5 @@ export const usePipelineStore = create((set) => ({
   clearSteps: () => set({ steps: [] }),
   setQuerying: (isQuerying) => set({ isQuerying }),
   setIngesting: (isIngesting) => set({ isIngesting }),
+  setActiveJob: (activeJob) => set({ activeJob }),
 }));

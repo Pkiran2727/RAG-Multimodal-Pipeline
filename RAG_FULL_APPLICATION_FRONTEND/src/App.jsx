@@ -15,7 +15,7 @@ function App() {
   const [password, setPassword] = useState('admin123');
   const [query, setQuery] = useState('');
   const [technique, setTechnique] = useState('hybrid');
-  const [activeJob, setActiveJob] = useState(null);
+  const [metadataFilters, setMetadataFilters] = useState('{}');
   
   const { 
     documents, setDocuments, 
@@ -23,7 +23,8 @@ function App() {
     currentAnswer, setAnswer,
     sources, setSources,
     steps, addStep, clearSteps,
-    setQuerying, isQuerying
+    setQuerying, isQuerying,
+    activeJob, setActiveJob
   } = usePipelineStore();
 
   const ws = useRef(null);
@@ -39,7 +40,7 @@ function App() {
   useEffect(() => {
     if (activeJob && isAuthenticated) {
       const token = sessionStorage.getItem('token');
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
+      const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin;
       const wsProtocol = apiBase.startsWith('https') ? 'wss' : 'ws';
       const wsHost = apiBase.replace(/^https?:\/\//, '');
       const wsUrl = `${wsProtocol}://${wsHost}/ws/pipeline/${activeJob}?token=${token}`;
@@ -82,17 +83,29 @@ function App() {
     setShowSettings(false);
     
     try {
-      const { data } = await api.post('/query/search', {
+      const payload = {
         query,
         document_id: selectedDoc.id,
         technique
-      });
+      };
+      
+      if (technique === 'meta') {
+        try {
+          payload.filters = JSON.parse(metadataFilters);
+        } catch (e) {
+          alert("Invalid JSON format for Metadata Filters. Please check your input.");
+          setQuerying(false);
+          return;
+        }
+      }
+
+      const { data } = await api.post('/query/search', payload);
       setAnswer(data.answer);
       setSources(data.sources);
       setActiveJob(data.job_id);
     } catch (error) {
       console.error('Search failed', error);
-      addStep({ step: 'ERROR', detail: 'Search failed. Please try again.', color: '#EF4444' });
+      addStep({ step: 'ERROR', detail: error?.response?.data?.detail || 'Search failed. Please try again.', color: '#EF4444' });
     } finally {
       setQuerying(false);
     }
@@ -270,6 +283,19 @@ function App() {
                   <div className="space-y-1">
                     <label className="text-[10px] text-gray-600 font-bold uppercase">LLM Temp</label>
                     <input type="number" defaultValue={0.1} step={0.1} className="w-full bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs outline-none focus:border-accent-500" />
+                  </div>
+                  <div className="col-span-2 space-y-1 pt-2 border-t border-surface-800">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase flex justify-between">
+                      <span>Metadata Filters (JSON)</span>
+                      {technique === 'meta' && <span className="text-orange-500">Required for Meta search</span>}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={metadataFilters}
+                      onChange={e => setMetadataFilters(e.target.value)}
+                      placeholder='e.g., {"page": 1, "section": "Introduction"}' 
+                      className={`w-full bg-surface-800 border ${technique === 'meta' ? 'border-orange-500/50 focus:border-orange-500' : 'border-surface-700 focus:border-accent-500'} rounded px-2 py-1 text-xs outline-none font-mono text-gray-400`} 
+                    />
                   </div>
                 </div>
               </motion.div>

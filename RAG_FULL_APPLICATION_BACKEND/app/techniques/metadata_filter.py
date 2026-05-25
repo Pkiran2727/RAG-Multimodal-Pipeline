@@ -6,6 +6,10 @@ class MetadataFilter(BaseRAGTechnique):
     async def retrieve(self, query: str, document_id: str, top_k: int, **kwargs) -> List[Dict[str, Any]]:
         filters = kwargs.get("filters", {})
         
+        if not filters:
+            await self.emit("DONE", "#EF4444", "Metadata Filter selected but no filters provided.")
+            return []
+            
         # 1. SQL Pre-filtering
         await self.emit("FILTER", "#D97706", f"SQL filter: {filters}...")
         matching_ids = await self.supabase.filter_chunk_ids(document_id, self.user_id, filters)

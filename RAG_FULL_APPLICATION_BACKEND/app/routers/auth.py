@@ -46,12 +46,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.post("/seed_admin")
 async def seed_admin():
-    """Utility to pre-create admin user for local testing. Forced clean sync."""
-    hashed = get_password_hash("admin123")
+    import traceback
     try:
-        # Delete existing to ensure fresh hash if environment changed
+        hashed = get_password_hash("admin123")
         supabase_service.client.table("users").delete().eq("username", "admin").execute()
-        
         supabase_service.client.table("users").insert({
             "username": "admin",
             "password_hash": hashed
@@ -60,4 +58,4 @@ async def seed_admin():
         return {"msg": "Admin user created/reset (admin / admin123)"}
     except Exception as e:
         logger.error(f"Seeding failed: {e}")
-        return {"msg": f"Seeding failed: {str(e)}"}
+        return {"error": str(e), "traceback": traceback.format_exc()}
