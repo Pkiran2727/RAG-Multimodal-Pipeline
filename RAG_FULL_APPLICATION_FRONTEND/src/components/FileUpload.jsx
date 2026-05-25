@@ -14,7 +14,7 @@ const STRATEGIES = [
 
 export default function FileUpload() {
   const [file, setFile] = useState(null);
-  const { setIngesting, isIngesting } = usePipelineStore();
+  const { setIngesting, isIngesting, setDocuments } = usePipelineStore();
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -36,7 +36,9 @@ export default function FileUpload() {
     formData.append('strategy', strategy);
     
     try {
-      const { data } = await api.post('/ingest/upload', formData);
+      await api.post('/ingest/upload', formData);
+      const docsRes = await api.get('/ingest/documents');
+      setDocuments(docsRes.data);
       setStatus('success');
       setTimeout(() => {
         setStatus('idle');
