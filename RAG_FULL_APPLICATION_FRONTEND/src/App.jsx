@@ -24,7 +24,8 @@ function App() {
     sources, setSources,
     steps, addStep, clearSteps,
     setQuerying, isQuerying,
-    activeJob, setActiveJob
+    activeJob, setActiveJob,
+    history, addHistory, clearHistory
   } = usePipelineStore();
 
   const ws = useRef(null);
@@ -103,6 +104,15 @@ function App() {
       setAnswer(data.answer);
       setSources(data.sources);
       setActiveJob(data.job_id);
+      
+      addHistory({
+        id: Date.now(),
+        query: query,
+        answer: data.answer,
+        technique: technique,
+        document: selectedDoc.filename,
+        timestamp: new Date().toLocaleTimeString()
+      });
     } catch (error) {
       console.error('Search failed', error);
       addStep({ step: 'ERROR', detail: error?.response?.data?.detail || 'Search failed. Please try again.', color: '#EF4444' });
@@ -267,8 +277,34 @@ function App() {
             </div>
 
             {showHistory && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-surface-900 rounded-xl p-4 border border-surface-700 text-sm text-gray-500 text-center font-mono">
-                [ EMPTY HISTORY ] No previous queries found.
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-surface-900 rounded-xl p-4 border border-surface-700 space-y-4">
+                <div className="flex justify-between items-center border-b border-surface-800 pb-2">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Session History</h3>
+                  <button onClick={clearHistory} className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 font-bold">
+                    <Trash2 className="w-3 h-3" /> Clear
+                  </button>
+                </div>
+                {history.length === 0 ? (
+                  <div className="text-sm text-gray-500 text-center font-mono py-4">
+                    [ EMPTY HISTORY ] No previous queries found this session.
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                    {history.map((item) => (
+                      <div key={item.id} className="bg-surface-800 rounded-lg p-3 border border-surface-700 text-left">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-sm font-bold text-primary-400 line-clamp-1">{item.query}</span>
+                          <span className="text-[10px] text-gray-500 font-mono shrink-0 ml-2">{item.timestamp}</span>
+                        </div>
+                        <div className="text-xs text-gray-300 line-clamp-2">{item.answer}</div>
+                        <div className="flex gap-2 mt-3">
+                          <span className="text-[9px] font-bold font-mono opacity-70 bg-surface-700 px-1.5 py-0.5 rounded uppercase text-accent-400">{item.technique}</span>
+                          <span className="text-[9px] font-bold font-mono opacity-70 bg-surface-700 px-1.5 py-0.5 rounded truncate max-w-[150px]">{item.document}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 
