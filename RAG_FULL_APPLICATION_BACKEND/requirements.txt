@@ -19,3 +19,4 @@ ragas==0.1.14
 json_repair==0.25.2
 loguru==0.7.2
 slowapi==0.1.9
+openai>=1.0.0

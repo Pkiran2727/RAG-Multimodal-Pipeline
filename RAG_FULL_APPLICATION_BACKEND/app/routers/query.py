@@ -8,6 +8,7 @@ from ..techniques.metadata_filter import MetadataFilter
 from ..techniques.colbert import ColBERT
 from ..techniques.agentic_rag import AgenticRAG
 from ..techniques.cache_incremental import CacheIncrementalRAG
+from ..techniques.ragas_eval import RagasEval
 import uuid
 import logging
 
@@ -21,8 +22,10 @@ TECHNIQUE_MAP = {
     "meta": MetadataFilter,
     "colbert": ColBERT,
     "agentic": AgenticRAG,
-    "cache": CacheIncrementalRAG
+    "cache": CacheIncrementalRAG,
+    "ragas": RagasEval
 }
+
 
 @router.post("/search", response_model=QueryResponse)
 async def search(
