@@ -3,8 +3,10 @@ import { Search, Boxes, Database, Zap, Settings, History, Lock, User, Trash2 } f
 import { motion } from 'framer-motion';
 import FileUpload from './components/FileUpload';
 import TechniqueSelector from './components/TechniqueSelector';
+import TechniqueCompatibilityCard from './components/TechniqueCompatibilityCard';
 import PipelineVisualizer from './components/PipelineVisualizer';
 import QueryResult from './components/QueryResult';
+
 import { usePipelineStore } from './store/pipelineStore';
 import { useAuthStore } from './store/authStore';
 import api from './api/client';
@@ -370,8 +372,10 @@ function App() {
               <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest pl-1 border-l-2 border-accent-500 ml-1">
                 Select Retrieval Strategy
               </div>
+              <TechniqueCompatibilityCard technique={technique} selectedDoc={selectedDoc} metadataFilters={metadataFilters} />
               <TechniqueSelector selected={technique} onSelect={setTechnique} />
             </div>
+
           </div>
 
           <QueryResult answer={currentAnswer} sources={sources} />
