@@ -29,8 +29,20 @@ class BM25Service:
         """Search using BM25."""
         path = self._get_index_path(document_id)
         if not path.exists():
-            logger.warning(f"BM25 index not found for {document_id}")
-            return []
+            logger.warning(f"BM25 index not found for {document_id}. Attempting to rebuild from Supabase...")
+            try:
+                from .supabase_client import supabase_service
+                result = supabase_service.client.table("chunks").select("*").eq("document_id", document_id).execute()
+                chunks = result.data
+                if chunks:
+                    logger.info(f"Rebuilding BM25 index for {document_id} with {len(chunks)} chunks.")
+                    self.index_chunks(document_id, chunks)
+                else:
+                    logger.warning(f"No chunks found in Supabase for {document_id}. Cannot rebuild index.")
+                    return []
+            except Exception as e:
+                logger.error(f"Failed to rebuild BM25 index: {e}")
+                return []
 
         with open(path, "rb") as f:
             data = pickle.load(f)
