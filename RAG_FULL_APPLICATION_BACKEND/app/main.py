@@ -24,12 +24,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from .routers import auth, ingest, query
+from .routers import auth, ingest, query, advanced, vectordb
 
 # Routers
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(ingest.router, prefix="/ingest", tags=["ingest"])
 app.include_router(query.router, prefix="/query", tags=["query"])
+app.include_router(advanced.router)
+app.include_router(vectordb.router)
+
 
 @app.get("/health")
 async def health_check():

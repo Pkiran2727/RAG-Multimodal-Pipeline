@@ -10,10 +10,13 @@ export default defineConfig({
       '/auth': 'http://127.0.0.1:8008',
       '/ingest': 'http://127.0.0.1:8008',
       '/query': 'http://127.0.0.1:8008',
+      '/advanced': 'http://127.0.0.1:8008',
+      '/vectordb': 'http://127.0.0.1:8008',
       '/ws': {
         target: 'ws://127.0.0.1:8008',
         ws: true
       }
+
     }
   }
 })

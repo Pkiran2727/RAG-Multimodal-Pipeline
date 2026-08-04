@@ -5,10 +5,10 @@ services:
     build:
       context: ./RAG_FULL_APPLICATION_BACKEND
       dockerfile: Dockerfile
-    ports:
-      - "8001:8000"
     env_file:
       - ./RAG_FULL_APPLICATION_BACKEND/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./RAG_FULL_APPLICATION_BACKEND:/app
       - ./RAG_FULL_APPLICATION_BACKEND/data:/app/data
@@ -21,9 +21,7 @@ services:
       context: ./RAG_FULL_APPLICATION_FRONTEND
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=http://localhost:8001
-    ports:
-      - "5173:80"
+        - VITE_API_BASE_URL=
     depends_on:
       - backend
 
@@ -31,4 +29,15 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
     restart: unless-stopped
