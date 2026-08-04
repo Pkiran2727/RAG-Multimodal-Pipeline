@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class GLM47Service:
     def __init__(self):
-        self.api_key = getattr(settings, "GLM_4_7_API_KEY", None) or os.getenv("GLM_4_7_API_KEY", "04f83efc8d834ad599eedd505aa1a70f.o63P8xs622I2zg2Y")
+        self.api_key = getattr(settings, "GLM_4_7_API_KEY", "") or os.getenv("GLM_4_7_API_KEY", "")
         self.base_url = getattr(settings, "GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
         self.model_name = getattr(settings, "GLM_MODEL_NAME", "glm-4.7-Flash")
         self._client = None
