@@ -125,9 +125,32 @@ Format your output EXACTLY as this JSON structure:
         return await self.underlying.retrieve(query, document_id, top_k=top_k, **kwargs)
 
     async def generate(self, query: str, chunks: List[Dict[str, Any]]) -> str:
-        base_answer = await self.underlying.generate(query, chunks)
-        # Evaluate single query answer with GLM-4.7-Flash judge
+        max_retries = 2
+        base_answer = ""
+        scores = {}
         contexts = [c["text"] for c in chunks]
-        scores = await self.evaluate_item(query, base_answer, contexts, ground_truth="")
-        return f"{base_answer}\n\n---\n**RAGAs Quality Score (GLM-4.7-Flash Judge)**:\n- Faithfulness: `{scores['faithfulness']:.2f}`\n- Relevancy: `{scores['answer_relevancy']:.2f}`\n- Precision: `{scores['context_precision']:.2f}`\n- Recall: `{scores['context_recall']:.2f}`"
+        attempt = 0
+        
+        for attempt in range(max_retries + 1):
+            if attempt > 0:
+                await self.emit("GENERATE", "#F59E0B", f"Self-Correction (Attempt {attempt}): Regenerating answer due to low score...")
+                feedback_prompt = (
+                    f"Your previous answer was evaluated and scored low on these metrics:\n"
+                    f"Faithfulness: {scores.get('faithfulness', 0)}\n"
+                    f"Relevancy: {scores.get('answer_relevancy', 0)}\n"
+                    f"Please try again. Ensure the answer is faithful to the context and highly relevant to the query."
+                )
+                new_query = f"{query}\n\n[FEEDBACK FROM PREVIOUS ATTEMPT]: {feedback_prompt}"
+                base_answer = await self.underlying.generate(new_query, chunks)
+            else:
+                base_answer = await self.underlying.generate(query, chunks)
+                
+            # Evaluate single query answer with Gemini judge
+            scores = await self.evaluate_item(query, base_answer, contexts, ground_truth="")
+            
+            # Check if scores are acceptable
+            if scores["faithfulness"] >= 0.8 and scores["answer_relevancy"] >= 0.8:
+                break
+                
+        return f"{base_answer}\n\n---\n**RAGAs Quality Score (Gemini Judge)**:\n- Faithfulness: `{scores['faithfulness']:.2f}`\n- Relevancy: `{scores['answer_relevancy']:.2f}`\n- Precision: `{scores['context_precision']:.2f}`\n- Recall: `{scores['context_recall']:.2f}`\n- *Self-Correction Retries: {attempt}*"
 

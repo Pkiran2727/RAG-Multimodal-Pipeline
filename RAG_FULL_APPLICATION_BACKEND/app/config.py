@@ -16,12 +16,9 @@ class Settings(BaseSettings):
     EMBED_TIMEOUT: int = 60
     EMBED_MAX_RETRIES: int = 3
 
-    # LLM — Qwen3 & GLM-4.7-Flash
-    QWEN3_MODEL_NAME: str = "Qwen/Qwen3-Demo"
-    QWEN3_THINKING_BUDGET: int = 38
-    GLM_4_7_API_KEY: str = ""
-    GLM_BASE_URL: str = "https://api.z.ai/api/paas/v4/"
-    GLM_MODEL_NAME: str = "glm-4.7-Flash"
+    # LLM — Tencent Hy3, Gemini & Qwen Omni
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL_NAME: str = "gemini-3.1-flash-lite"
     LLM_RESPONSE_TIMEOUT: int = 1080
     MAX_LLM_RETRIES: int = 3
     MAX_TIMEOUT_RETRIES: int = 10

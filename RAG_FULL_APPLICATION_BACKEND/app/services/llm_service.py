@@ -1,237 +1,287 @@
 import os
 import threading
-import time
+import time, json
 import logging
-import re
+import requests
 import html
-from gradio_client import Client
-from openai import OpenAI
+import random
+from abc import ABC, abstractmethod
+from gradio_client import Client, handle_file
 from ..config import settings
 from ..utils.json_utils import extract_json_block, repair_json
 
 logger = logging.getLogger(__name__)
 
-class GLM47Service:
+class ILLMService(ABC):
+    @abstractmethod
+    def generate(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> str:
+        """Generate text response."""
+        pass
+        
+    @abstractmethod
+    def evaluate_json(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> dict:
+        """Generate structured JSON response."""
+        pass
+
+class TencentHy3Service(ILLMService):
     def __init__(self):
-        self.api_key = getattr(settings, "GLM_4_7_API_KEY", "") or os.getenv("GLM_4_7_API_KEY", "")
-        self.base_url = getattr(settings, "GLM_BASE_URL", "https://api.z.ai/api/paas/v4/")
-        self.model_name = getattr(settings, "GLM_MODEL_NAME", "glm-4.7-Flash")
-        self._client = None
+        self.model_name = "tencent/Hy3"
+        self.timeout = getattr(settings, "LLM_RESPONSE_TIMEOUT", 1080)
+        self.max_retries = getattr(settings, "MAX_LLM_RETRIES", 3)
 
-    @property
-    def client(self):
-        if not self._client:
-            self._client = OpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url
-            )
-        return self._client
-
-    def _call_api(self, prompt: str, sys_prompt: str, result_box: list, error_box: list):
+    def _call(self, prompt: str, sys_prompt: str, result_box: list, error_box: list):
+        client = None
         try:
-            default_sys = (
-                "You are a highly capable AI assistant. Provide accurate, concise, and fact-based responses. "
-                "Always format your responses in valid JSON when requested."
+            client = Client(self.model_name)
+            result2 = client.predict(
+                message=prompt,
+                system_prompt=sys_prompt or "",
+                history=None,
+                think_level="high",
+                temperature=None,
+                max_tokens=0,
+                top_p=0,
+                functions_json_str="",
+                api_name="/chat"
             )
-            extra_body = {
-                "thinking": {
-                    "type": "enabled",
-                },
-            }
-            completion = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": sys_prompt or default_sys},
-                    {"role": "user", "content": prompt}
+            result_box[0] = result2
+        except Exception as e:
+            error_box[0] = e
+        finally:
+            if client:
+                try:
+                    client.close()
+                except:
+                    pass
+
+    def generate(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> str:
+        if retry_count >= self.max_retries:
+            raise RuntimeError(f"Max Hy3 retries ({self.max_retries}) exceeded")
+
+        rb, eb = [None], [None]
+        t = threading.Thread(target=self._call, args=(prompt, sys_prompt, rb, eb), daemon=True)
+        t.start()
+        t.join(timeout=self.timeout)
+
+        if t.is_alive():
+            logger.warning(f"Hy3 timeout. Attempt {retry_count + 1}/{self.max_retries}")
+            return self.generate(prompt, sys_prompt, retry_count + 1)
+
+        if eb[0]:
+            logger.error(f"Hy3 error: {eb[0]}. Attempt {retry_count + 1}/{self.max_retries}")
+            time.sleep(2)
+            return self.generate(prompt, sys_prompt, retry_count + 1)
+
+        if rb[0] is None:
+            return self.generate(prompt, sys_prompt, retry_count + 1)
+
+        try:
+            res = rb[0]
+            if isinstance(res, (list, tuple)) and len(res) > 0:
+                response_text = res[0]
+            else:
+                response_text = str(res)
+            return response_text.strip()
+        except Exception as e:
+            logger.error(f"Parse error for Hy3: {e}")
+            return str(rb[0])
+            
+    def evaluate_json(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> dict:
+        raw_text = self.generate(prompt, sys_prompt, retry_count)
+        json_str = extract_json_block(raw_text)
+        data = repair_json(json_str)
+        if data and isinstance(data, dict):
+            return data
+        try:
+            return json.loads(json_str)
+        except Exception:
+            if retry_count < self.max_retries:
+                return self.evaluate_json(prompt, sys_prompt, retry_count + 1)
+            raise ValueError("Hy3 failed to return valid JSON.")
+
+class GeminiService(ILLMService):
+    def __init__(self):
+        self.api_key = getattr(settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+        self.model_name = getattr(settings, "GEMINI_MODEL_NAME", "gemini-3.1-flash-lite")
+        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent"
+        self.timeout = getattr(settings, "LLM_RESPONSE_TIMEOUT", 1080)
+        self.max_retries = getattr(settings, "MAX_LLM_RETRIES", 3)
+
+    def _call(self, prompt: str, sys_prompt: str, result_box: list, error_box: list):
+        try:
+            headers = {'Content-Type': 'application/json'}
+            url = f"{self.base_url}?key={self.api_key}"
+            
+            system_instruction = {"parts": [{"text": sys_prompt}]} if sys_prompt else None
+            
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": prompt}
+                        ]
+                    }
                 ],
-                stream=False,
-                extra_body=extra_body
-            )
-            raw = completion.choices[0].message.content
-            result_box[0] = raw
+                "generationConfig": {
+                    "temperature": 0.7,
+                }
+            }
+            if system_instruction:
+                payload["systemInstruction"] = system_instruction
+                
+            res = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+            if res.status_code != 200:
+                error_box[0] = f"HTTP {res.status_code}: {res.text}"
+            else:
+                result_box[0] = res.json()
         except Exception as e:
             error_box[0] = e
 
     def generate(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> str:
-        """
-        Generate text response from GLM-4.7-Flash with 3 retries.
-        """
-        max_retries = getattr(settings, "MAX_LLM_RETRIES", 3)
-        if retry_count >= max_retries:
-            raise RuntimeError(f"Max GLM-4.7-Flash retries ({max_retries}) exceeded")
+        if retry_count >= self.max_retries:
+            raise RuntimeError(f"Max Gemini retries ({self.max_retries}) exceeded")
 
         rb, eb = [None], [None]
-        t = threading.Thread(target=self._call_api, args=(prompt, sys_prompt, rb, eb), daemon=True)
-        t.start()
-        t.join(timeout=settings.LLM_RESPONSE_TIMEOUT)
-
-        if t.is_alive():
-            logger.warning(f"GLM-4.7-Flash timeout. Attempt {retry_count + 1}/{max_retries}")
-            return self.generate(prompt, sys_prompt, retry_count + 1)
+        self._call(prompt, sys_prompt, rb, eb)
 
         if eb[0]:
-            logger.error(f"GLM-4.7-Flash error: {eb[0]}. Attempt {retry_count + 1}/{max_retries}")
+            logger.error(f"Gemini error: {eb[0]}. Attempt {retry_count + 1}/{self.max_retries}")
             time.sleep(2)
             return self.generate(prompt, sys_prompt, retry_count + 1)
 
         if rb[0] is None:
             return self.generate(prompt, sys_prompt, retry_count + 1)
 
-        raw_text = rb[0].strip()
-        json_str = extract_json_block(raw_text)
-        data = repair_json(json_str)
-        if data and isinstance(data, dict) and 'answer' in data:
-            return str(data['answer']).strip()
-        return raw_text
+        try:
+            data = rb[0]
+            text = data['candidates'][0]['content']['parts'][0]['text']
+            return text.strip()
+        except Exception as e:
+            logger.error(f"Parse error for Gemini: {e}")
+            return str(rb[0])
 
     def evaluate_json(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> dict:
-        """
-        Generate structured JSON response (used for RAGAS evaluation) with 3 retries.
-        """
-        max_retries = getattr(settings, "MAX_LLM_RETRIES", 3)
-        if retry_count >= max_retries:
-            raise RuntimeError(f"Max GLM-4.7-Flash evaluation retries ({max_retries}) exceeded")
-
-        rb, eb = [None], [None]
-        t = threading.Thread(target=self._call_api, args=(prompt, sys_prompt, rb, eb), daemon=True)
-        t.start()
-        t.join(timeout=settings.LLM_RESPONSE_TIMEOUT)
-
-        if t.is_alive() or eb[0] or rb[0] is None:
-            logger.warning(f"GLM-4.7-Flash JSON evaluation attempt {retry_count + 1} failed or timed out: {eb[0]}")
-            time.sleep(2)
-            return self.evaluate_json(prompt, sys_prompt, retry_count + 1)
-
-        raw_text = rb[0]
+        raw_text = self.generate(prompt, sys_prompt, retry_count)
         json_str = extract_json_block(raw_text)
-        parsed = repair_json(json_str)
-        if parsed and isinstance(parsed, dict):
-            return parsed
-        
-        # Fallback to direct json.loads
+        data = repair_json(json_str)
+        if data and isinstance(data, dict):
+            return data
         try:
             return json.loads(json_str)
-        except Exception as pe:
-            logger.error(f"Failed to parse GLM evaluation JSON: {pe}")
-            return self.evaluate_json(prompt, sys_prompt, retry_count + 1)
+        except Exception:
+            if retry_count < self.max_retries:
+                return self.evaluate_json(prompt, sys_prompt, retry_count + 1)
+            raise ValueError("Gemini failed to return valid JSON.")
 
-class Qwen3Service:
+class QwenOmniService(ILLMService):
     def __init__(self):
-        self.model_name = getattr(settings, "QWEN3_MODEL_NAME", "zai-org/GLM-4.5-Space")
-        self._client = None
+        self.model_name = "Qwen/Qwen3.5-Omni-Offline-Demo"
+        self.timeout = getattr(settings, "LLM_RESPONSE_TIMEOUT", 1080)
+        self.max_retries = getattr(settings, "MAX_LLM_RETRIES", 3)
 
-    @property
-    def client(self):
-        if not self._client:
-            self._client = Client(self.model_name)
-        return self._client
-
-    def _call(self, prompt: str, result_box: list, error_box: list):
+    def _call(self, prompt: str, sys_prompt: str, result_box: list, error_box: list):
+        client = None
         try:
-            try:
-                self.client.predict(api_name="/reset")
-            except:
-                pass
-
-            sys_prompt = (
-                "You are a highly capable RAG assistant. "
-                "Provide accurate, concise, and fact-based responses. "
-                "ALWAYS wrap your response in a JSON block with the following keys:\n"
-                "{\n"
-                "  \"thinking\": \"Your internal reasoning process\",\n"
-                "  \"answer\": \"Your final formatted answer in markdown\"\n"
-                "}\n"
-                "Keep the 'thinking' brief and the 'answer' detailed."
-            )
-            
-            result = self.client.predict(
-                msg=prompt,
-                sys_prompt=sys_prompt,
-                thinking_enabled=True,
-                temperature=0.1,
-                api_name="/chat_wrapper_1"
+            client = Client(self.model_name)
+            client.predict(api_name="/clear_history_offline")
+            result = client.predict(
+                text=prompt,
+                audio=None,
+                image=None,
+                video=None,
+                history=[],
+                system_prompt=sys_prompt or "You are a helpful expert. Return accurate responses.",
+                temperature=0.7,
+                top_p=0.8,
+                top_k=20,
+                api_name="/chat_predict"
             )
             result_box[0] = result
         except Exception as e:
             error_box[0] = e
+        finally:
+            if client:
+                try:
+                    client.close()
+                except:
+                    pass
 
-    def generate(self, prompt: str, retry_count: int = 0) -> str:
-        """
-        Generate response from Qwen with 3 retries max.
-        """
-        max_retries = getattr(settings, "MAX_LLM_RETRIES", 3)
-        if retry_count >= max_retries:
-            raise RuntimeError(f"Max Qwen LLM retries ({max_retries}) exceeded")
+    def generate(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> str:
+        if retry_count >= self.max_retries:
+            raise RuntimeError(f"Max Qwen Omni retries ({self.max_retries}) exceeded")
 
         rb, eb = [None], [None]
-        t = threading.Thread(target=self._call, args=(prompt, rb, eb), daemon=True)
+        t = threading.Thread(target=self._call, args=(prompt, sys_prompt, rb, eb), daemon=True)
         t.start()
-        t.join(timeout=settings.LLM_RESPONSE_TIMEOUT)
+        t.join(timeout=self.timeout)
 
         if t.is_alive():
-            logger.warning(f"Qwen timeout. Attempt {retry_count + 1}/{max_retries}")
-            return self.generate(prompt, retry_count + 1)
+            logger.warning(f"Qwen Omni timeout. Attempt {retry_count + 1}/{self.max_retries}")
+            return self.generate(prompt, sys_prompt, retry_count + 1)
 
         if eb[0]:
-            logger.error(f"Qwen error: {eb[0]}. Attempt {retry_count + 1}/{max_retries}")
+            logger.error(f"Qwen Omni error: {eb[0]}. Attempt {retry_count + 1}/{self.max_retries}")
             time.sleep(2)
-            return self.generate(prompt, retry_count + 1)
+            return self.generate(prompt, sys_prompt, retry_count + 1)
 
         if rb[0] is None:
-            return self.generate(prompt, retry_count + 1)
+            return self.generate(prompt, sys_prompt, retry_count + 1)
 
         try:
             res = rb[0]
-            raw_text = ""
             if isinstance(res, (list, tuple)) and len(res) > 0:
-                turn = res[0]
-                if isinstance(turn, (list, tuple)) and len(turn) > 1:
-                    content_dict = turn[1]
-                    if isinstance(content_dict, dict) and 'content' in content_dict:
-                        raw_text = content_dict['content']
-
-            if not raw_text:
-                raw_text = str(res)
-
-            json_str = extract_json_block(raw_text)
-            data = repair_json(json_str)
-
-            if data and isinstance(data, dict) and 'answer' in data:
-                return str(data['answer']).strip()
-            
-            if raw_text:
-                return raw_text.strip()
-                
-            return self.generate(prompt, retry_count + 1)
+                response_text = res[0]
+            else:
+                response_text = str(res)
+            return response_text.strip()
         except Exception as e:
-            logger.error(f"Parse error for Qwen: {e}")
+            logger.error(f"Parse error for Qwen Omni: {e}")
             return str(rb[0])
+
+    def evaluate_json(self, prompt: str, sys_prompt: str = None, retry_count: int = 0) -> dict:
+        raw_text = self.generate(prompt, sys_prompt, retry_count)
+        json_str = extract_json_block(raw_text)
+        data = repair_json(json_str)
+        if data and isinstance(data, dict):
+            return data
+        try:
+            return json.loads(json_str)
+        except Exception:
+            if retry_count < self.max_retries:
+                return self.evaluate_json(prompt, sys_prompt, retry_count + 1)
+            raise ValueError("Qwen Omni failed to return valid JSON.")
 
 class LLMServiceDispatcher:
     def __init__(self):
-        self.primary = Qwen3Service()
-        self.backup = GLM47Service()
+        self.primary = TencentHy3Service()
+        self.secondary = GeminiService()
+        self.tertiary = QwenOmniService()
 
     @property
-    def judge(self) -> GLM47Service:
-        """GLM-4.7-Flash as RAGAS Judge"""
-        return self.backup
+    def judge(self) -> ILLMService:
+        """Gemini 3.1 Flash Lite as RAGAS Judge (to conserve rate limits on Primary if needed, or because Gemini is better at JSON)"""
+        return self.secondary
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, sys_prompt: str = None) -> str:
         """
-        Generates text using Primary (Qwen with 3 retries).
-        Falls back to Backup (GLM-4.7-Flash with 3 retries) if primary fails.
+        Generates text using Primary (Tencent Hy3).
+        Falls back to Secondary (Gemini) if primary fails.
+        Falls back to Tertiary (Qwen Omni) if secondary fails.
         """
         try:
-            logger.info("Attempting generation with Primary LLM (Qwen)...")
-            return self.primary.generate(prompt)
+            logger.info("Attempting generation with Primary LLM (Tencent Hy3)...")
+            return self.primary.generate(prompt, sys_prompt)
         except Exception as e:
-            logger.warning(f"Primary LLM failed: {e}. Falling back to Backup LLM (GLM-4.7-Flash)...")
+            logger.warning(f"Primary Tencent Hy3 failed: {e}. Falling back to Gemini...")
             try:
-                return self.backup.generate(prompt)
+                return self.secondary.generate(prompt, sys_prompt)
             except Exception as fe:
-                logger.error(f"Backup LLM (GLM-4.7-Flash) also failed: {fe}")
-                raise RuntimeError("All LLM services (Primary Qwen & Backup GLM-4.7-Flash) failed after retries")
+                logger.warning(f"Secondary Gemini also failed: {fe}. Falling back to Qwen Omni...")
+                try:
+                    return self.tertiary.generate(prompt, sys_prompt)
+                except Exception as te:
+                    logger.error(f"Tertiary Qwen Omni also failed: {te}")
+                    raise RuntimeError("All LLM services failed after retries")
 
 llm_service = LLMServiceDispatcher()
 
