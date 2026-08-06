@@ -179,7 +179,7 @@ export default function SearchPlaygroundPage() {
                     handleSearch();
                   }
                 }}
-                placeholder={selectedDoc ? `Ask a question about "${selectedDoc.filename}"...` : "Select a document from the left to start..."}
+                placeholder={selectedDoc ? `Ask a question about "${selectedDoc.filename}"...` : (documents.length === 0 ? "Upload a document in the Ingestion page to start searching..." : "Select a document from the left to start...")}
                 disabled={!selectedDoc || isQuerying}
                 className="query-textarea"
               />
