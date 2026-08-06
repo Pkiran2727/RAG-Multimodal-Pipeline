@@ -109,7 +109,7 @@ class SupabaseService:
         """Delete document + chunks + vectors (CASCADE)"""
         try:
             # 1. Chunks (will cascade to vectors)
-            self.client.table("chunks").delete().eq("document_id", document_id).execute()
+            self.client.table("chunks").delete().eq("document_id", document_id).eq("user_id", user_id).execute()
             # 2. Document
             self.client.table("documents").delete().eq("id", document_id).eq("user_id", user_id).execute()
         except Exception as e:

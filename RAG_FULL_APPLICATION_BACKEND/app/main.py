@@ -7,18 +7,24 @@ from .utils.ws_manager import ws_manager
 import logging
 import os
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from .utils.auth_utils import decode_token
+
 # Setup Logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+limiter = Limiter(key_func=get_remote_address, default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"])
 app = FastAPI(title="RAG Pipeline API", version="3.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS
-# origins = settings.CORS_ORIGINS.split(",")
-origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:5174", "http://127.0.0.1:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,9 +46,14 @@ async def health_check():
 
 @app.websocket("/ws/pipeline/{job_id}")
 async def pipeline_ws(websocket: WebSocket, job_id: str, token: str):
-    # JWT verification logic will go here
-    # For now, just connect
-    await ws_manager.connect(job_id, websocket, "anonymous")
+    # JWT verification
+    payload = decode_token(token)
+    if not payload:
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+        
+    user_id = payload.get("id", "anonymous")
+    await ws_manager.connect(job_id, websocket, user_id)
     try:
         while True:
             data = await websocket.receive_text()
@@ -50,7 +61,7 @@ async def pipeline_ws(websocket: WebSocket, job_id: str, token: str):
     except Exception as e:
         logger.error(f"WebSocket error for job {job_id}: {e}")
     finally:
-        await ws_manager.disconnect(job_id, "anonymous")
+        await ws_manager.disconnect(job_id, user_id)
 
 # Serve frontend static files in production monolith
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static")

@@ -44,18 +44,3 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(data={"sub": user["username"], "id": user["id"]})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/seed_admin")
-async def seed_admin():
-    import traceback
-    try:
-        hashed = get_password_hash("admin123")
-        supabase_service.client.table("users").delete().eq("username", "admin").execute()
-        supabase_service.client.table("users").insert({
-            "username": "admin",
-            "password_hash": hashed
-        }).execute()
-        logger.info("Admin user seeded successfully.")
-        return {"msg": "Admin user created/reset (admin / admin123)"}
-    except Exception as e:
-        logger.error(f"Seeding failed: {e}")
-        return {"error": str(e), "traceback": traceback.format_exc()}

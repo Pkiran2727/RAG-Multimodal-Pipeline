@@ -33,10 +33,11 @@ async def upload_file(
     strategy: str = Form("fixed"),
     user: dict = Depends(get_current_user)
 ):
+    safe_filename = os.path.basename(file.filename)
     job_id = str(uuid.uuid4())
     temp_dir = Path("./data/uploads") / user["id"]
     temp_dir.mkdir(parents=True, exist_ok=True)
-    file_path = temp_dir / file.filename
+    file_path = temp_dir / safe_filename
     
     with open(file_path, "wb") as f:
         f.write(await file.read())
@@ -45,7 +46,7 @@ async def upload_file(
     background_tasks.add_task(
         process_ingestion, 
         str(file_path), 
-        file.filename, 
+        safe_filename, 
         chunk_size, 
         overlap, 
         strategy, 
