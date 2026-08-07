@@ -283,5 +283,26 @@ class LLMServiceDispatcher:
                     logger.error(f"Tertiary Qwen Omni also failed: {te}")
                     raise RuntimeError("All LLM services failed after retries")
 
+    def evaluate_json(self, prompt: str, sys_prompt: str = None) -> dict:
+        """
+        Evaluates JSON using Primary (Tencent Hy3).
+        Falls back to Secondary (Gemini) if primary fails.
+        Falls back to Tertiary (Qwen Omni) if secondary fails.
+        """
+        try:
+            logger.info("Attempting JSON evaluation with Primary LLM (Tencent Hy3)...")
+            return self.primary.evaluate_json(prompt, sys_prompt)
+        except Exception as e:
+            logger.warning(f"Primary Tencent Hy3 failed JSON eval: {e}. Falling back to Gemini...")
+            try:
+                return self.secondary.evaluate_json(prompt, sys_prompt)
+            except Exception as fe:
+                logger.warning(f"Secondary Gemini also failed JSON eval: {fe}. Falling back to Qwen Omni...")
+                try:
+                    return self.tertiary.evaluate_json(prompt, sys_prompt)
+                except Exception as te:
+                    logger.error(f"Tertiary Qwen Omni also failed JSON eval: {te}")
+                    raise RuntimeError("All LLM services failed JSON evaluation after retries")
+
 llm_service = LLMServiceDispatcher()
 

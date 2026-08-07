@@ -76,6 +76,8 @@ Determine if the query is EITHER:
 1. A conversational greeting (e.g., "hi", "namaste", "hello there", "namaskaram") OR
 2. A general summarization or document inquiry (e.g., "what is this document about?", "summarize this", "idi emiti")
 
+If the query falls into EITHER category 1 OR category 2, you MUST return true. Otherwise, return false.
+
 Return ONLY a JSON object:
 {{"is_conversational": true/false}}
 """
