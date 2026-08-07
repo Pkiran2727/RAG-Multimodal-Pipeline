@@ -71,22 +71,37 @@ class CorrectiveRAGService(ICorrectiveRAGService):
         else:
             max_similarity = max([c.get("similarity", 0.0) for c in retrieved_chunks] or [0.0])
             
-        intent_prompt = f"""Analyze the following user query: "{query}"
-Determine if the query is EITHER:
-1. A conversational greeting (e.g., "hi", "namaste", "hello there", "namaskaram") OR
-2. A general summarization or document inquiry (e.g., "what is this document about?", "summarize this", "idi emiti")
+        # Hybrid Intent Detection (Keywords + LLM)
+        query_lower = query.lower().strip()
+        
+        # 1. Fast, deterministic pattern match for greetings & document summary inquiries
+        common_patterns = [
+            "hi", "hello", "hey", "namaste", "namaskaram", "namaskar", "greetings",
+            "good morning", "good afternoon", "good evening",
+            "summarize", "summary", "overview", "main points", "key takeaways", "brief",
+            "what is this document", "about this document", "document about", "what is this pdf",
+            "idi emiti", "katha emiti", "vishyamanu", "kya hai"
+        ]
+        
+        is_conversational = any(p in query_lower for p in common_patterns) or len(query_lower.split()) < 3
 
-If the query falls into EITHER category 1 OR category 2, you MUST return true. Otherwise, return false.
+        # 2. If keywords don't match, fall back to LLM intent classification for multi-lingual/complex queries
+        if not is_conversational:
+            intent_prompt = f"""Analyze the user query: "{query}"
+Determine if it belongs to EITHER of these categories:
+Category 1: Conversational greeting or small talk (any language)
+Category 2: General document summarization request or overall document question (e.g. asking what the document is about)
+
+If it belongs to Category 1 OR Category 2, return true. If it is a specific factual search query, return false.
 
 Return ONLY a JSON object:
 {{"is_conversational": true/false}}
 """
-        try:
-            intent_res = llm_service.evaluate_json(intent_prompt)
-            is_conversational = intent_res.get("is_conversational", False)
-        except Exception:
-            # Fallback to simple heuristic if LLM fails
-            is_conversational = len(query.split()) < 3
+            try:
+                intent_res = llm_service.evaluate_json(intent_prompt)
+                is_conversational = intent_res.get("is_conversational", False)
+            except Exception:
+                pass
             
         is_low_confidence = (max_similarity < 0.50) and not is_conversational
         
