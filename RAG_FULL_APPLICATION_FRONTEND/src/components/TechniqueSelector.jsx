@@ -9,7 +9,7 @@ const techniques = [
   { id: 'colbert', name: 'ColBERT', desc: 'Token MaxSim', color: 'border-red-500', icon: Layers, badge: 'MaxSim' },
   { id: 'agentic', name: 'Agentic RAG', desc: 'Multimodal Reasoning', color: 'border-blue-600', icon: Cpu, badge: 'Multimodal' },
   { id: 'cache', name: 'Cache', desc: 'Redis Query Cache', color: 'border-gray-500', icon: Database, badge: 'Sub-50ms' },
-  { id: 'ragas', name: 'RAGAS Eval', desc: 'GLM-4.7-Flash Judge', color: 'border-emerald-500', icon: Award, badge: 'RAGAS Score' },
+  { id: 'ragas', name: 'RAGAS Eval', desc: 'Gemini 3.1 Flash Judge', color: 'border-emerald-500', icon: Award, badge: 'RAGAS Score' },
 ];
 
 export default function TechniqueSelector({ selected, onSelect }) {

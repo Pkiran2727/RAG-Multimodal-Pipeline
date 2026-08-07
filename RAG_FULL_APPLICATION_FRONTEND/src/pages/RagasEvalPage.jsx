@@ -57,12 +57,12 @@ export default function RagasEvalPage() {
             RAGAS Quality & AI Evaluation Laboratory
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Automated regression testing powered by GLM-4.7-Flash LLM Judge. Evaluates Faithfulness, Relevancy, Precision, and Recall.
+            Automated regression testing powered by Gemini 3.1 Flash LLM Judge. Evaluates Faithfulness, Relevancy, Precision, and Recall.
           </p>
         </div>
 
         <span className="text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-2">
-          <Cpu className="w-4 h-4" /> GLM-4.7-Flash Active Judge
+          <Cpu className="w-4 h-4" /> Gemini 3.1 Flash Active Judge
         </span>
       </div>
 
@@ -98,7 +98,7 @@ export default function RagasEvalPage() {
               className="w-full btn-accent py-3 font-bold text-xs flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40"
             >
               <Play className="w-4 h-4 fill-white" />
-              {isEvaluating ? 'GLM-4.7-Flash Evaluating RAGAS Metrics...' : 'Run Automated RAGAS Quality Evaluation'}
+              {isEvaluating ? 'Gemini 3.1 Flash Evaluating RAGAS Metrics...' : 'Run Automated RAGAS Quality Evaluation'}
             </button>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function RagasEvalPage() {
 
               {/* Raw Reasoning */}
               <div className="bg-surface-900 p-4 rounded-xl border border-surface-800 space-y-2">
-                <span className="text-[10px] font-mono font-bold text-gray-400 uppercase block">GLM-4.7-Flash Evaluation Reasoning Output:</span>
+                <span className="text-[10px] font-mono font-bold text-gray-400 uppercase block">Gemini 3.1 Flash Evaluation Reasoning Output:</span>
                 <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto custom-scrollbar">
                   {evalResult.raw_answer}
                 </pre>
