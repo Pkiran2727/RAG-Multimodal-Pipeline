@@ -27,8 +27,11 @@ class ColBERT(BaseRAGTechnique):
         token_rows = await self.supabase.get_colbert_tokens(document_id)
         
         if not token_rows:
-            await self.emit("DONE", "#EF4444", "No ColBERT tokens found for document.")
-            return []
+            await self.emit("FALLBACK", "#F59E0B", "No ColBERT token index found. Falling back to dense vector search...")
+            q_vec = get_embedding(query)
+            results = await self.supabase.vector_search(q_vec, document_id, self.user_id, top_k)
+            await self.emit("DONE", "#22C55E", f"Vector search fallback complete. top-{top_k} returned.")
+            return results
             
         # Group tokens by chunk_id
         chunk_token_map = {}
