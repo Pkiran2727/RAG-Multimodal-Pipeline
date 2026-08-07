@@ -7,8 +7,8 @@ export default function FundamentalsPage() {
     { title: '1. Knowledge Ingestion', desc: 'Parsing PDF, TXT, DOCX, CSV, PNG documents and tokenizing text into discrete chunks.' },
     { title: '2. Vector Indexing', desc: 'Generating 1024-dim dense embeddings using bge-m3 and indexing in Supabase pgvector & local BM25.' },
     { title: '3. Strategic Retrieval', desc: 'Executing Hybrid Search (BM25 + Vector RRF), HyDE, Re-ranking, or Agentic RAG to fetch context chunks.' },
-    { title: '4. Augmented Generation', desc: 'Dispatching formatted context prompts to Qwen (Primary) or GLM-4.7-Flash (Backup Failover).' },
-    { title: '5. Quality Evaluation (RAGAS)', desc: 'Evaluating Faithfulness, Relevancy, Precision, and Recall using GLM-4.7-Flash as LLM Judge.' }
+    { title: '4. Augmented Generation', desc: 'Dispatching formatted context prompts to Tencent Hy3 (Primary) with Gemini 3.1 Flash backup.' },
+    { title: '5. Quality Evaluation (RAGAS)', desc: 'Evaluating Faithfulness, Relevancy, Precision, and Recall using Gemini 3.1 Flash as LLM Judge.' }
   ];
 
   return (

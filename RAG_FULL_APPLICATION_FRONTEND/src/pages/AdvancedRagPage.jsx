@@ -12,7 +12,7 @@ export default function AdvancedRagPage() {
   const [graphData, setGraphData] = useState(null);
   const [graphLoading, setGraphLoading] = useState(false);
   const [inputText, setInputText] = useState(
-    "Artificial Intelligence and Machine Learning models rely on Vector Embeddings and Supabase pgvector storage. HyDE query expansion uses Large Language Models like Qwen and GLM-4.7-Flash to generate synthetic document responses for reciprocal rank fusion retrieval."
+    "Artificial Intelligence and Machine Learning models rely on Vector Embeddings and Supabase pgvector storage. HyDE query expansion uses Large Language Models like Tencent Hy3 and Gemini 3.1 Flash to generate synthetic document responses for reciprocal rank fusion retrieval."
   );
 
   // Guardrails State
