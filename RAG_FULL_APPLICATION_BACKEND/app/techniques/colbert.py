@@ -71,6 +71,5 @@ class ColBERT(BaseRAGTechnique):
 
     async def generate(self, query: str, chunks: List[Dict[str, Any]]) -> str:
         await self.emit("GENERATE", "#7C3AED", "Qwen3 generating answer...")
-        context = "\n\n".join([c["text"] for c in chunks])
-        prompt = f"Context:\n{context}\n\nQuestion: {query}\n\nAnswer based ONLY on the context:"
+        prompt = self.build_prompt(query, chunks)
         return self.llm.generate(prompt)

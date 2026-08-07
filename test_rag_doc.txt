@@ -1,0 +1,1 @@
+This is a test document for RAG ingestion. The sky is blue and water is wet.

@@ -56,7 +56,6 @@ class HybridSearch(BaseRAGTechnique):
             "context_chunks": len(chunks),
             "temperature": 0.1
         })
-        context = "\n\n".join([c["text"] for c in chunks])
-        prompt = f"Context:\n{context}\n\nQuestion: {query}\n\nAnswer based ONLY on the context:"
+        prompt = self.build_prompt(query, chunks)
         return self.llm.generate(prompt)
 

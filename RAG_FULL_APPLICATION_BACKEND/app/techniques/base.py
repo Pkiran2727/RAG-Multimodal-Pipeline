@@ -15,6 +15,18 @@ class BaseRAGTechnique(ABC):
         self.supabase = supabase_service
         self.llm = llm_service
 
+    def build_prompt(self, query: str, chunks: List[Dict[str, Any]]) -> str:
+        context = "\n\n".join([c["text"] for c in chunks])
+        return f"""Context:
+{context}
+
+Question: {query}
+
+Instructions:
+1. If the user is just saying a general greeting (e.g., "hi", "hello"), respond politely without using the context.
+2. If the user asks a general question about the document itself (e.g., "what is this document about?", "summarize"), summarize the provided context to answer.
+3. Otherwise, answer the question based ONLY on the provided context. If the answer is not in the context, state that clearly."""
+
     @abstractmethod
     async def retrieve(self, query: str, document_id: str, top_k: int, **kwargs) -> List[Dict[str, Any]]:
         pass

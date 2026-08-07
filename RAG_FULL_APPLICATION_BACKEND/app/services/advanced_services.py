@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
 import re
+from ..services.llm_service import llm_service
 
 # ==========================================
 # 1. GRAPH RAG SERVICE (SOLID: Interface & Implementation)
@@ -70,7 +71,22 @@ class CorrectiveRAGService(ICorrectiveRAGService):
         else:
             max_similarity = max([c.get("similarity", 0.0) for c in retrieved_chunks] or [0.0])
             
-        is_low_confidence = max_similarity < 0.50
+        intent_prompt = f"""Analyze the following user query: "{query}"
+Determine if the query is EITHER:
+1. A conversational greeting (e.g., "hi", "namaste", "hello there", "namaskaram") OR
+2. A general summarization or document inquiry (e.g., "what is this document about?", "summarize this", "idi emiti")
+
+Return ONLY a JSON object:
+{{"is_conversational": true/false}}
+"""
+        try:
+            intent_res = llm_service.evaluate_json(intent_prompt)
+            is_conversational = intent_res.get("is_conversational", False)
+        except Exception:
+            # Fallback to simple heuristic if LLM fails
+            is_conversational = len(query.split()) < 3
+            
+        is_low_confidence = (max_similarity < 0.50) and not is_conversational
         
         if is_low_confidence:
             # Perform web search fallback simulation

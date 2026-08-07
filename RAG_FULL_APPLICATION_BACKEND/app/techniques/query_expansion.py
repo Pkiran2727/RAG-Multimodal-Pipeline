@@ -68,7 +68,6 @@ class QueryExpansion(BaseRAGTechnique):
             "llm": "Primary Qwen / Backup GLM-4.7-Flash",
             "chunks_used": len(chunks)
         })
-        context = "\n\n".join([c["text"] for c in chunks])
-        prompt = f"Context:\n{context}\n\nQuestion: {query}\n\nAnswer based ONLY on the context:"
+        prompt = self.build_prompt(query, chunks)
         return self.llm.generate(prompt)
 
