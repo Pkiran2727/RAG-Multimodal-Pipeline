@@ -4,6 +4,8 @@ RAG_VENV/
 __pycache__/
 *.pyc
 data/bm25_indexes/
+RAG_FULL_APPLICATION_BACKEND/data/uploads/
+*.pdf
 *.log
 
 # --- Frontend (Vite/React) ---
