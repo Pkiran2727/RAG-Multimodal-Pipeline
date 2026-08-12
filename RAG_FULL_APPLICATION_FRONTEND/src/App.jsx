@@ -32,7 +32,15 @@ function App() {
   // Load documents
   useEffect(() => {
     if (isAuthenticated) {
-      api.get('/ingest/documents').then(res => setDocuments(res.data)).catch(console.error);
+      api.get('/ingest/documents').then(res => {
+        setDocuments(res.data);
+        const { selectedDoc, setSelectedDoc } = usePipelineStore.getState();
+        if (res.data && res.data.length > 0) {
+          if (!selectedDoc || !res.data.some(d => d.id === selectedDoc.id)) {
+            setSelectedDoc(res.data[0]);
+          }
+        }
+      }).catch(console.error);
     }
   }, [isAuthenticated]);
 
@@ -50,7 +58,15 @@ function App() {
         const step = JSON.parse(event.data);
         addStep(step);
         if (step.step === 'DONE') {
-          api.get('/ingest/documents').then(res => setDocuments(res.data)).catch(console.error);
+          api.get('/ingest/documents').then(res => {
+            setDocuments(res.data);
+            if (res.data && res.data.length > 0) {
+              const newDoc = step.metadata?.doc_id 
+                ? res.data.find(d => d.id === step.metadata.doc_id) || res.data[0]
+                : res.data[0];
+              usePipelineStore.getState().setSelectedDoc(newDoc);
+            }
+          }).catch(console.error);
         }
       };
 

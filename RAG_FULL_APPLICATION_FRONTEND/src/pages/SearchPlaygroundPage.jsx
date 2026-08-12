@@ -36,6 +36,13 @@ export default function SearchPlaygroundPage() {
     }
   }, [query]);
 
+  // Ensure selectedDoc is auto-selected if documents exist
+  useEffect(() => {
+    if (documents.length > 0 && (!selectedDoc || !documents.some(d => d.id === selectedDoc.id))) {
+      setSelectedDoc(documents[0]);
+    }
+  }, [documents, selectedDoc, setSelectedDoc]);
+
   const handleSearch = async () => {
     if (!query || !selectedDoc) return;
     setQuerying(true);
