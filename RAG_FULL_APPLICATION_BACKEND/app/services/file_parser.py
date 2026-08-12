@@ -62,14 +62,18 @@ async def _parse_image(file_path: str, job_id: str, ws_manager: Any, user_id: st
     except Exception as e:
         logger.warning(f"Tesseract OCR failed: {e}")
 
-    # 2. Vision Space Analysis (if available)
+    # 2. Vision Space Analysis (with non-blocking 4s timeout)
     try:
         await ws_manager.emit(job_id, user_id, {"step": "IMAGE_ANALYZE", "color": "#8B5CF6", "detail": "Analyzing visual image contents..."})
-        description = vision_service.understand_image(file_path)
+        import asyncio
+        description = await asyncio.wait_for(
+            asyncio.to_thread(vision_service.understand_image, file_path),
+            timeout=4.0
+        )
         if description and "failed to understand" not in description.lower():
             extracted_content.append(f"Visual Scene Description:\n{description}")
     except Exception as e:
-        logger.warning(f"Vision space analysis skipped/failed: {e}")
+        logger.warning(f"Vision space analysis skipped/timed out: {e}")
 
     # 3. Fallback to image metadata if no text or vision
     if not extracted_content:
