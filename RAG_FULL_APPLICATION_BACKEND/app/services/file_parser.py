@@ -50,14 +50,21 @@ async def _parse_image(file_path: str, job_id: str, ws_manager: Any, user_id: st
     filename = Path(file_path).name
     extracted_content = []
     
-    # 1. Tesseract OCR (Fast, Reliable Local OCR)
+    # 1. Tesseract OCR (Fast, Reliable Local OCR with grayscale preprocessing)
     ocr_text = ""
     try:
         import pytesseract
-        from PIL import Image
+        from PIL import Image, ImageOps
         img = Image.open(file_path)
-        ocr_text = pytesseract.image_to_string(img).strip()
+        # Convert to grayscale and enhance contrast for reliable OCR
+        gray_img = ImageOps.grayscale(img)
+        if gray_img.width < 1000:
+            gray_img = gray_img.resize((gray_img.width * 2, gray_img.height * 2), Image.Resampling.BILINEAR)
+        ocr_text = pytesseract.image_to_string(gray_img).strip()
+        if not ocr_text:
+            ocr_text = pytesseract.image_to_string(img).strip()
         if ocr_text:
+            logger.info(f"OCR extracted {len(ocr_text)} characters from {filename}")
             extracted_content.append(f"Visual Text Content Extracted via OCR:\n{ocr_text}")
     except Exception as e:
         logger.warning(f"Tesseract OCR failed: {e}")

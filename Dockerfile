@@ -12,7 +12,7 @@ WORKDIR /app
 
 # System dependencies for python-docx, tiktoken, Tesseract OCR, etc.
 RUN apt-get update && apt-get install -y \
-    build-essential libpq-dev tesseract-ocr libmagic1 libgl1 && \
+    build-essential libpq-dev tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd libmagic1 libgl1 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY RAG_FULL_APPLICATION_BACKEND/requirements.txt ./
