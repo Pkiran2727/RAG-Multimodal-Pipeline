@@ -102,6 +102,22 @@ export default function SearchPlaygroundPage() {
     }
   };
 
+  const handleDeleteDoc = async (e, docId) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this document and all its embeddings from Supabase database?')) return;
+    try {
+      await api.delete(`/ingest/documents/${docId}`);
+      const updatedDocs = documents.filter(d => d.id !== docId);
+      setDocuments(updatedDocs);
+      if (selectedDoc?.id === docId) {
+        setSelectedDoc(updatedDocs.length > 0 ? updatedDocs[0] : null);
+      }
+    } catch (error) {
+      console.error('Delete failed', error);
+      alert('Failed to delete document: ' + (error?.response?.data?.detail || error.message));
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -159,8 +175,17 @@ export default function SearchPlaygroundPage() {
                     }`}
                   >
                     <div className="flex justify-between items-center text-xs font-semibold">
-                      <span className="truncate max-w-[180px]">{doc.filename}</span>
-                      <span className="text-[9px] font-mono bg-surface-800 px-1.5 py-0.5 rounded text-accent-400 uppercase">{doc.file_type}</span>
+                      <span className="truncate max-w-[170px] text-white" title={doc.filename}>{doc.filename}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[9px] font-mono bg-surface-800 px-1.5 py-0.5 rounded text-accent-400 uppercase">{doc.file_type}</span>
+                        <button
+                          onClick={(e) => handleDeleteDoc(e, doc.id)}
+                          className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                          title="Delete from Supabase"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

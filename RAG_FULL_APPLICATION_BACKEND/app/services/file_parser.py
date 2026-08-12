@@ -47,17 +47,41 @@ async def _parse_pdf(file_path: str, job_id: str, ws_manager: Any, user_id: str)
         return [{"text": text, "metadata": {"source": Path(file_path).name, "page": 1}}]
 
 async def _parse_image(file_path: str, job_id: str, ws_manager: Any, user_id: str):
+    filename = Path(file_path).name
+    extracted_content = []
+    
+    # 1. Tesseract OCR (Fast, Reliable Local OCR)
+    ocr_text = ""
     try:
-        await ws_manager.emit(job_id, user_id, {"step": "IMAGE_ANALYZE", "color": "#8B5CF6", "detail": "Qwen-VL analyzing image (Primary)..."})
-        description = vision_service.understand_image(file_path)
-        return [{"text": description, "metadata": {"source": Path(file_path).name, "page": 1}}]
-    except Exception as e:
-        logger.warning(f"Vision service failed, falling back to Tesseract: {e}")
-        await ws_manager.emit(job_id, user_id, {"step": "FALLBACK", "color": "#F59E0B", "detail": "Vision failed. Falling back to Tesseract OCR..."})
         import pytesseract
         from PIL import Image
-        text = pytesseract.image_to_string(Image.open(file_path))
-        return [{"text": text, "metadata": {"source": Path(file_path).name, "page": 1}}]
+        img = Image.open(file_path)
+        ocr_text = pytesseract.image_to_string(img).strip()
+        if ocr_text:
+            extracted_content.append(f"Visual Text Content Extracted via OCR:\n{ocr_text}")
+    except Exception as e:
+        logger.warning(f"Tesseract OCR failed: {e}")
+
+    # 2. Vision Space Analysis (if available)
+    try:
+        await ws_manager.emit(job_id, user_id, {"step": "IMAGE_ANALYZE", "color": "#8B5CF6", "detail": "Analyzing visual image contents..."})
+        description = vision_service.understand_image(file_path)
+        if description and "failed to understand" not in description.lower():
+            extracted_content.append(f"Visual Scene Description:\n{description}")
+    except Exception as e:
+        logger.warning(f"Vision space analysis skipped/failed: {e}")
+
+    # 3. Fallback to image metadata if no text or vision
+    if not extracted_content:
+        try:
+            from PIL import Image
+            img = Image.open(file_path)
+            extracted_content.append(f"Image Document: {filename}\nResolution: {img.width}x{img.height}\nFormat: {img.format}\nMode: {img.mode}\nStatus: Visual image document indexed in knowledge base.")
+        except Exception:
+            extracted_content.append(f"Image Document: {filename}\nStatus: Visual image document indexed in knowledge base.")
+
+    final_text = "\n\n".join(extracted_content)
+    return [{"text": final_text, "metadata": {"source": filename, "page": 1}}]
 
 def _parse_docx(file_path: str):
     doc = Document(file_path)

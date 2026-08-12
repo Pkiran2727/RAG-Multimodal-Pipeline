@@ -69,13 +69,13 @@ async def list_documents(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @router.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str, user_id: str = Depends(get_current_user)):
+async def delete_document(doc_id: str, user: dict = Depends(get_current_user)):
     try:
-        # 1. Database cleanup
-        await supabase_service.delete_document(doc_id, user_id["id"])
-        # 2. BM25 cleanup
+        # 1. Database cleanup from Supabase (documents + chunks + vectors)
+        await supabase_service.delete_document(doc_id, user["id"])
+        # 2. Local BM25 cleanup
         bm25_service.delete_document(doc_id)
-        return {"status": "success", "message": f"Document {doc_id} deleted"}
+        return {"status": "success", "message": f"Document {doc_id} deleted successfully from Supabase"}
     except Exception as e:
         logger.error(f"Failed to delete document {doc_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

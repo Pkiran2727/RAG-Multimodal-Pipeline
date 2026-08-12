@@ -20,24 +20,25 @@ class VisionService:
         """
         Send image to Qwen-VL HF Space for description.
         """
-        try:
-            # Check if file exists and is not empty to avoid crash
-            import os
-            if not os.path.exists(image_path) or os.path.getsize(image_path) == 0:
-                return ""
+        import os
+        if not os.path.exists(image_path) or os.path.getsize(image_path) == 0:
+            return ""
 
+        try:
             self.client.predict(api_name="/clear_conversation_history")
             file_arg = [handle_file(image_path)]
-            prompt = "Please describe the contents of this image in detail."
+            prompt = "Please describe the contents of this image in detail, including all visible text, objects, and layout."
 
             result = self.client.predict(
                 input_value={"files": file_arg, "text": prompt},
                 api_name="/add_message"
             )
             response_text = result[1]['value'][1]['content'][0]['content']
-            return str(response_text)
+            if response_text and str(response_text).strip():
+                return str(response_text).strip()
+            raise ValueError("Empty response from vision space")
         except Exception as e:
-            logger.error(f"Image understanding failed: {e}")
-            return "Failed to understand image."
+            logger.warning(f"Image understanding via space failed: {e}")
+            raise
 
 vision_service = VisionService()

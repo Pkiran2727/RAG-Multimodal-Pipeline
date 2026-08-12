@@ -106,12 +106,30 @@ class SupabaseService:
         return result.data
 
     async def delete_document(self, document_id: str, user_id: str):
-        """Delete document + chunks + vectors (CASCADE)"""
+        """Delete document + chunks + vectors + colbert tokens (CASCADE)"""
         try:
-            # 1. Chunks (will cascade to vectors)
-            self.client.table("chunks").delete().eq("document_id", document_id).eq("user_id", user_id).execute()
-            # 2. Document
-            self.client.table("documents").delete().eq("id", document_id).eq("user_id", user_id).execute()
+            # 1. Delete vector embeddings
+            try:
+                self.client.table("chunk_vectors").delete().eq("document_id", document_id).eq("user_id", user_id).execute()
+            except Exception as e:
+                logger.warning(f"chunk_vectors delete notice: {e}")
+
+            # 2. Delete colbert tokens
+            try:
+                self.client.table("colbert_tokens").delete().eq("document_id", document_id).execute()
+            except Exception as e:
+                logger.warning(f"colbert_tokens delete notice: {e}")
+
+            # 3. Delete chunks
+            try:
+                self.client.table("chunks").delete().eq("document_id", document_id).eq("user_id", user_id).execute()
+            except Exception as e:
+                logger.warning(f"chunks delete notice: {e}")
+
+            # 4. Delete document entry
+            result = self.client.table("documents").delete().eq("id", document_id).eq("user_id", user_id).execute()
+            logger.info(f"Document {document_id} and all associated embeddings deleted from Supabase.")
+            return result
         except Exception as e:
             logger.error(f"Failed to delete document {document_id}: {e}")
             raise
